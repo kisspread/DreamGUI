@@ -13,6 +13,12 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
 
 ### New
 
+- HDR display targets composite screen UI in linear light at the display paper white, then encode to PQ/Rec2020 or scRGB. SDR and linear capture targets retain their existing rendering path.
+
+- `UUITextInput::GetOnInputActivateEvent()` exposes the existing begin/end-edit notification to native consumers, alongside the text-change and submit delegates.
+
+- Navigation indicators expose `GetAnimDuration` / `SetAnimDuration`. Zero snaps native focus movement and fades immediately, including an in-progress transition, for host accessibility policies.
+
 - **DreamMCP.** An AI agent connected through a [DreamMCP](https://github.com/TypeDreamMoon/dream-mcp) server gets a
   `dream_gui` tool: `check`, `compile`, `diagnostics`, `lookup`, `layout`, `preview` and `info` for `.dui` files, answered
   by the user's editor or by a host the server starts (the windowless editor, or `-run=DreamGUIHost` when nothing has to
@@ -528,6 +534,16 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
   [DreamRingMenu](Docs/Reference/DreamRingMenu.md).
 
 ### Fixed
+
+- Scope-free scroll-box key tests explicitly select menu input, so a host configured for gameplay outside menus no longer disables their navigation fixture.
+
+- The DreamMCP preview stage defines its constructor alongside the complete preview-scene type, fixing independent compilation of layout and preview callers that previously instantiated an incomplete-type deleter.
+
+- `SetWantsTick(false)` inside a user widget's `NativeOnDisable` now removes its manager tick registration. Cancelled interactions no longer tick while disabled or leave a stale registration after destruction.
+
+- Native scroll boxes refresh their range after content layout commits, including dynamic rows, removals and visibility changes. Switching from a long list to a short list no longer retains the old scrollable extent.
+
+- Native scroll boxes measure wrapping content against the viewport's cross-axis size, including nested Fill slots. Scrolling to the end no longer exposes a blank tail calculated from stale or authored widths; horizontal boxes follow the same rule.
 
 - **Building a screen whose component is not compiled yet leaves nothing behind.** It tried to load the component's
   class from a package that did not exist, which left an empty package of that name in memory -- one the DreamMCP
