@@ -535,6 +535,8 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
 
 ### Fixed
 
+- Native scroll boxes resize their content when the inner viewport changes. Cached viewport dimensions no longer leave rows at the old width or height until another interaction or style update.
+
 - Scope-free scroll-box key tests explicitly select menu input, so a host configured for gameplay outside menus no longer disables their navigation fixture.
 
 - The DreamMCP preview stage defines its constructor alongside the complete preview-scene type, fixing independent compilation of layout and preview callers that previously instantiated an incomplete-type deleter.
