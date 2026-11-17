@@ -535,6 +535,8 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
 
 ### Fixed
 
+- Tiled images and sprites sample the complete vertical texture range for each full row. Previously full rows collapsed to the bottom texel row, leaving long tiled chains or panels with missing sections while a final partial row still appeared.
+
 - Native scroll boxes resize their content when the inner viewport changes. Cached viewport dimensions no longer leave rows at the old width or height until another interaction or style update.
 
 - Scope-free scroll-box key tests explicitly select menu input, so a host configured for gameplay outside menus no longer disables their navigation fixture.
