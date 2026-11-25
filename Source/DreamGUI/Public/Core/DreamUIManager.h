@@ -11,6 +11,7 @@
 #include "Core/DreamLayoutPassContext.h"
 #include "Core/DreamUIWorldService.h"
 #include "Core/DreamWidgetTreeHost.h"
+#include "DreamGUIEngineCompat.h"
 #include "DreamUIManager.generated.h"
 
 struct FDreamUIHelperGizmoRenderParameter;
@@ -123,6 +124,11 @@ public:
 	 */
 	static bool ShouldRunForNetMode(ENetMode InNetMode);
 	/**
+	 * ShouldRunForNetMode with the mode InWorld is in: NM_DedicatedServer in a server process whatever the world says,
+	 * the world's own net mode otherwise. False for a dedicated server's world, which is left without a manager by design.
+	 */
+	static bool ShouldRunForWorld(const UWorld* InWorld);
+	/**
 	 * While one lives, a world made in a commandlet gets a manager as an editor's world does. A commandlet's worlds get none
 	 * (a cook, a compile, a resave lays nothing out), except the one a tool makes on purpose to lay a screen out without
 	 * drawing it: the DreamMCP host does that in its stage's world, and scopes this around making it. Game thread.
@@ -142,7 +148,12 @@ public:
 	virtual void BeginDestroy() override;
 
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+#if DREAMGUI_ENGINE_AT_LEAST(5, 7)
 	virtual void OnWorldEndPlay(UWorld& InWorld) override;
+#else
+	/** The engine tells a world subsystem its world ended play from 5.7 on; before that, HandleWorldCleanup calls this. */
+	void OnWorldEndPlay(UWorld& InWorld);
+#endif
 
 	virtual TStatId GetStatId() const override;
 	virtual bool IsTickableInEditor()const override{ return false; }//use Ticker in editor, because Ticker can also tick when drag vector2/3 value while normal tick can't
@@ -154,7 +165,11 @@ public:
 #endif
 	void SubmitCanvasDrawCall();
 	virtual bool IsTickableWhenPaused() const override;
+#if DREAMGUI_ENGINE_AT_LEAST(5, 7)
 	bool HasBegunPlay()const{return bHasCalledBeginPlay;}
+#else
+	bool HasBegunPlay()const{return bDreamHasBegunPlay;}
+#endif
 
 	/** See LastLayoutPassCount. One is the only healthy value. */
 	int32 GetLastLayoutPassCount()const{return LastLayoutPassCount;}
@@ -465,6 +480,10 @@ private:
 	/** What TeardownWorld takes down, in the order the services enrolled. */
 	TArray<FWorldServiceEntry> WorldServices;
 	bool bWorldTornDown = false;
+#if !DREAMGUI_ENGINE_AT_LEAST(5, 7)
+	/** UWorldSubsystem::bHasCalledBeginPlay, which the engine only keeps from 5.7 on. */
+	bool bDreamHasBegunPlay = false;
+#endif
 	void HandleWorldCleanup(UWorld* InWorld, bool bInSessionEnded, bool bInCleanupResources);
 	/** A level leaving this world takes the trees of the hosts in it down with it. */
 	void HandleLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld);

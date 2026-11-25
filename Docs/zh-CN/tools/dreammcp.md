@@ -12,7 +12,7 @@ description: DreamMCP 服务器借以访问 DreamGUI 的 HTTP 端点——针对
 | 类型 | 编辑器服务，位于 `DreamGUIEditor` 模块（`Source/DreamGUIEditor/Private/MCP/`）中 |
 | 协议 | DreamMCP 协议 `1` |
 | 清单 | `<Plugin>/Resources/DreamMCP.json`：各操作、其以 JSON Schema 表示的参数、路由、宿主 commandlet |
-| 参考资料 | `.skill/reference/dui.md`、`example.md`、`pitfalls.md`、`controls.md`，由清单指定，随插件一起打包。每一份都独立成篇：其中的链接指向本手册，打不开它们的代理也不会错过任何必需的内容 |
+| 参考资料 | `.skill/reference/dui.md`、`example.md`、`presets.md`、`blocks.md`、`screens.md`、`pitfalls.md`、`controls.md`、`diagnostics.md`，由清单指定，随插件一起打包。每一份都独立成篇：其中的链接指向本手册，打不开它们的代理也不会错过任何必需的内容 |
 | 路由 | `http://127.0.0.1:<port>/dream/gui`，工具名 `dream_gui` |
 | 端口 | `47800`，或 `-DreamMCPPort=<n>`；无法绑定的端口会跳到下一个，最多 16 个。同一进程中的其他 Dream 插件共享它，各自在自己的路由下 |
 | 绑定地址 | 仅 `127.0.0.1`，在启动时验证 |
@@ -74,6 +74,25 @@ Widget Root  x=0 y=0 w=1920 h=1080  [Overlay]
 
 `data.tree` 是同样的树，形式为 JSON：每个节点有 `type`、`name`、`path`、`rect`、被裁剪时的 `visibleRect`、`visible`、`order`（在其画布中的绘制顺序）、`canvas`、`pressable`、`container`、`placedBy`、`anchors`、`in3d`、`text`（`text`、`fontSize`、`cut`、`overflows`、`neededW`、`neededH`）、`file` 和 `line`。在 3D 中旋转（或被剪切，或位于 `Perspective` 内）的节点，以画布相机绘制它时其轮廓的边界为准——它的四个角经过绘制其几何体所用的矩阵和画布的视图投影——因此它的矩形就是画面中显示的位置；该行会说明 `turned in 3D, rect as drawn in perspective`。当某个角位于视点后方时，它会说明 `rect approximate`，并给出正对着看到的轮廓（`approximate` 中的 `data.tree`）。
 
+<a id="which-way-a-turned-face-looks"></a>
+
+### 翻转的面朝向哪一侧
+
+看不到画面的读者无法分辨一个面板是朝向屏幕中央还是背向屏幕，因此 `layout` 用文字说明这一点。每个在 3D 中翻转的面——一个面板、一张卡片、一块板，其自身平面与它所在的面（或屏幕）倾斜 2 度或更多，每个方向 24 px 或更多——都会在树之前得到一行说明；位于该面上的内容随之倾斜，不再重复列出。摘要以每个面的几句话结尾（`In 3D: RosterLeft faces toward the centre, Board tilted back.`）：
+
+```text
+Turned in 3D, as drawn (one line a face; the farther edge is drawn shorter):
+  Panel RosterLeft, on the left: turned 14 degrees: faces toward the screen centre (right edge farther)
+  Panel RosterRight, on the right: turned 14 degrees: faces away from the screen centre (right edge farther)
+  Widget Board, in the middle: tilted back 35 degrees: top edge farther and narrower
+```
+
+- **角度**是面的平面相对于屏幕平面的角度：绕垂直轴（`turned`）和绕水平轴（`tilted`）。
+- **哪条边更远**是从画面上读出的，而非从属性读出：在两条相对的边中，取画布通过控件的绘制矩阵（其中折入了 `Perspective`）和画布的相机绘制得更短的那一条；绘制得一样时，取更深的那一条。`narrower` 表示更远的边被绘制得比更近的边更窄。
+- **它朝向哪边**取决于其更远边的方向：右边靠后，它就朝右。中心位于视口宽度中点左侧或右侧超过 8 % 的面，朝向 `toward the screen centre` 或 `away from`；更靠近中间的则朝向 `left` 或 `right`。向后倾斜时上边更远，向前倾斜时下边更远。翻转超过 90 度的面会说明其背面朝向观察者。
+
+这些是事实，而非发现：没有警告也没有信息，而某个翻转是否是屏幕所需由读者判断。最多列出 12 个面；`data.faces` 包含全部内容，每个面有 `name`、`path`、`file`、`line`、`centre`（`x`、`y`）、`side`（`left`、`right`、`middle`）、`turn`（`degrees`、`fartherEdge`、`faces`、`towardCentre`）、`tilt`（`degrees`、`fartherEdge`、`leans`：`back` 或 `forward`、`fartherEdgeNarrower`）、`back`，以及 `text`，即那一行。`preview` 给出与其 `text` 相同的行、其摘要末尾相同的文字，以及 `data.faces`。让面按屏幕通常所需方式翻转的迹象见 [Turned in 3D](../language/building-blocks.md#turned-in-3d)。
+
 `sizes` 会在更多视口下布局该屏幕（`"1280x720, 2560x1440, 1080x1920"`，最多五个）。在其中之一发现、而在 `width` x `height` 下未发现的问题会报告为 DUI8006，并指明该尺寸。
 
 <a id="the-layout-rules"></a>
@@ -88,9 +107,29 @@ Widget Root  x=0 y=0 w=1920 h=1080  [Overlay]
 | [DUI8002](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8002) | 警告 | 文本被其溢出策略截短，或被布局到超出其盒子 | 文本自身的度量（`UDreamText::MeasureFit`） |
 | [DUI8003](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8003) | 警告（对于带子级的普通控件为信息） | 会绘制、容纳子级或可被按下的节点没有宽度或高度；可按下控件小于指针所需 | 小于 1 px；小于 24 x 24 px（WCAG 2.2 的最小目标） |
 | [DUI8004](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8004) | 警告 | 同一画布中的两个可按下控件在屏幕上重叠，无论它们在树中的位置如何（一个位于另一个内部的情况除外）：那里的按下只会到达上面那个。至少 95 % 落在面积至少为其四倍的控件上的小控件（可按下卡片上的按钮、点击外部关闭的背景上的对话框）是有意分层，不会被报告 | 两个轴上都达到 2 px 或更多 |
-| [DUI8005](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8005) | 信息 | 同级节点的左、右、上或下边缘或中心几乎对齐；一行或一列三个或更多节点具有近乎均匀的间距 | 相差超过 0.5 且至多 3 px |
-| [DUI8006](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8006) | 警告 | 在 `sizes` 之一处出现 DUI8001–8004，而在第一个视口处没有 | 与其重复的规则相同 |
+| [DUI8005](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8005) | 信息 | 同级节点的左、右、上或下边缘或中心几乎对齐；一行或一列三个或更多节点具有近乎均匀的间距。在任意一边都不超过 128 px 的框内，纯视觉元素（无文本、无可按压内容）属于绘图的一部分或由形状绘制的图标，不参与比较 | 相差超过 0.5 且至多 3 px |
+| [DUI8006](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8006) | 警告 | DUI8001–8004、DUI8008 或 DUI8009 在 `sizes` 的某一处出现，且不在第一个视口中 | 与其所重复的规则相同 |
 | [DUI8007](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8007) | 警告 / 信息 | 在 `preview` 中：文本的颜色（按其 alpha）与其盒子内侧一圈一像素宽环上像素的中位数对比。控件自身某部分与背后内容的对比度在 1.1 : 1 以内（关闭状态的开关的勾选标记）属于有意隐藏，不会被报告 | WCAG 对比度低于 3 : 1 为警告；小于 24 px 的文本低于 4.5 : 1 为信息 |
+| [DUI8008](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8008) | 警告 | 节点绘制的内容超出其所在的面板或卡片：绘制盒子的最近祖先（非文本的视觉元素，每个方向至少 24 px），或者在覆盖层中，绘制内容填满父级的最后一个更早的兄弟节点——覆盖在阴影之上的表面。不报告：标记为 `Bleed` 的节点或位于其中的节点、会裁剪的框架（或介于其间的节点）、与屏幕同尺寸的框架（DUI8001 负责的情形）、每个方向至少占其框架 90 % 且覆盖其大部分区域的底板（覆盖在其阴影上的表面、卡片后面的光晕） | 超过 4 px，且至少达到节点自身在该侧宽度或高度的 5 % |
+| [DUI8009](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8009) | 警告 | 一个不接收指针的视觉元素，在同一画布中绘制在文本之后（在文件中更靠后，或位于更高层），覆盖了其字形——或者，不大于文本行且大部分位于其中。不报告：绘制在文本之前的内容（其背板）、其祖先或后代、控件（DUI8004）、没有主体的轮廓（`bEnableBody = false`）或比 40 / 255 更淡的轮廓、覆盖文本所在卡片 90 % 以上的蒙层、覆盖屏幕 60 % 以上的遮罩、标记为 `Bleed` 的节点、控件自身标签周围的控件自身部件。此外，文本横跨在绘制于其之前的形状边缘上，部分字母在形状上、其余在形状外（一个标签滑到下一个徽章上），且该形状不超过字形框的 8 倍——徽章、图标、下一项的图片，而不是背景形状或光晕。不报告：承载文本的形状（其底板）、位于文本所在面板或底板之后的形状（绘制在形状之后，无论是否透明）、文本所在面板的背板、环形或线条（轮廓）、控件、标记为 `Bleed` 的节点。每个文本只产生一个发现 | 字形框的 12 %，或行内装饰的 30 %；且任一至少 4 px 厚。跨边缘：形状上覆盖字形框的 12 % 到 88 %，至少 4 px 厚 |
+| [DUI8010](https://gui.toolchain.64hz.cn/en/docs/diagnostics/dui8xxx#dui8010) | 信息 | 面板（绘制盒子的节点，或覆盖层的底板，至少 240 x 120 px 且占屏幕 2 %，但小于屏幕的 60 %）内含文本和三个或更多内容，依据它们绘制的内容判断（忽略细于 6 px 的分隔线和强调条）：其内容偏居一侧，或在其中部横向留出一条空白带，或其行（列）分布稀疏。对于条形栏或侧边栏（长度是宽度的 2.5 倍），不检查其中部和分布 | 一侧空白 38 %，而相对一侧低于其三分之一，或在该轴 60 % 为空时一侧空白 20 %；中部条带为 38 %；项目之间的间隙占 60 % |
+
+两个节点会在其中之一的平面内进行比较——框架、文本或面板的平面——通过其控件的变换，因此在 3D 中翻转的卡片、旋转的徽章或处于透视中的屏幕，其边缘仍保持笔直；矩形为近似值的节点（某个角点位于视点之后）会被排除。节点绘制的内容是其视觉元素的几何形状：文本的字形、多边形的角点（翻转后的形状不按其包围盒测量）、图像的四边形、矩形块的主体，对于 DUI8009，当其不透明度至少为 40 / 255 时，还包括矩形块的外阴影或光晕。文本横跨的形状按其凸轮廓测量（多边形的角点，任何其他视觉元素的四个角点），且不超过其裁剪祖先允许显示的范围。
+
+<a id="going-past-the-frame-on-purpose-tag-bleed"></a>
+
+### 有意超出框架：`@tag Bleed`
+
+光晕、投影、溢出其卡片的角标、覆盖在标题上的光泽：给节点标记 `Bleed`，DUI8008 和 DUI8009 便会忽略它及其内部的一切。标记为 `Bleed` 的框架也不参与这两项测量。
+
+```
+RectBlock CardGlow {
+    @tag Bleed
+    AnchorData.SizeDelta = (360, 520)
+}
+```
+
+会裁剪的容器（`Clipping = ClipToBounds`）不需要标记：它裁掉的内容不会被绘制。
 
 <a id="what-preview-measures"></a>
 

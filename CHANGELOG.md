@@ -13,11 +13,28 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
 
 ### New
 
+- **The source builds on Unreal Engine 5.5 and 5.6 as well as 5.8.** One branch for every engine: the descriptor no longer
+  names an `EngineVersion`, and the differences between engines are answered in one header, `DreamGUIEngineCompat.h`.
+  The editor target and a Development game compile on 5.5 and 5.6; 5.7 was read against its source and not compiled.
+  **Nothing has been run on those engines, and the plugin's content is still saved by 5.8, which they cannot load** --
+  so this is the code half of supporting them. What differs on each is in
+  [Platforms](Docs/guides/platforms.md#engine-versions). The test host's template builds with each engine's latest
+  build settings (template version 6).
+
+- **A widget's parts, from its own pin.** Dragging off an authored widget's pin now lists what its visual, layout
+  container, layout self and behaviours can do -- their functions, and their properties as Get and Set -- filed under the
+  widget and the part. Picking *Set Text* off `PlayerLabel` places one node whose target is the widget: no Get Visual, no
+  Cast, no failure branch. The compile checks it against the hierarchy it builds: a `.dui` that turns that `Text` into a
+  `RectBlock` fails at the node, naming the widget and what it is now, instead of doing nothing at run time. *Get <part>*
+  returns the part itself, typed, for handing on. Nothing changes at run time and visuals stay swappable. C++ gets
+  `GetVisual<T>()`, `GetLayoutContainer<T>()` and `GetLayoutSelf<T>()` beside `GetComponent<T>()`.
+
 - HDR display targets composite screen UI in linear light at the display paper white, then encode to PQ/Rec2020 or scRGB. SDR and linear capture targets retain their existing rendering path.
+
+- Navigation indicators expose `GetAnimDuration` / `SetAnimDuration`. Zero snaps native focus movement and fades immediately, including an in-progress transition, for host accessibility policies.
 
 - `UUITextInput::GetOnInputActivateEvent()` exposes the existing begin/end-edit notification to native consumers, alongside the text-change and submit delegates.
 
-- Navigation indicators expose `GetAnimDuration` / `SetAnimDuration`. Zero snaps native focus movement and fades immediately, including an in-progress transition, for host accessibility policies.
 - **Edge Anti-Aliasing: the outline of a mesh element is smooth without MSAA.** A Polygon, Shape, Ring, Path, PolygonLine,
   2D line or custom mesh, and an Image drawn as a RoundedBox or radially filled, now draws its outline with a strip one
   device pixel wide made by its own geometry: the outline's vertices move half a pixel in, keeping the texture in place,
@@ -26,7 +43,10 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
   project settings), per element with `EdgeAntiAliasing` (`Default`, `On`, `Off`); screen-space and render-target
   canvases only, world-space canvases keep MSAA, and by default not while MSAA is on, which smooths these outlines
   already. These elements draw a few more vertices than before (two per outline
-  edge), and their edges are no longer stair-stepped where they were.
+  edge), and their edges are no longer stair-stepped where they were. A plain, nine-sliced, tiled or linearly filled
+  Image, Texture or Sprite gets the strip while a rotation or a tilt turns its sides off the pixel rows and columns, and
+  drops it once they are back on them; a widget clipping to such an image as the layer below reads the quad as it was
+  drawn, before the strip.
 
 - **A one-page cheat sheet and the diagnostics as JSON.** `Docs/cheatsheet.md` puts the `.dui` language on one page and
   ends with the codes that cost authors the most time; it is also the first reference page DreamMCP lists
@@ -58,6 +78,22 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
   judged as it is drawn. A glow or a bleed meant to go past takes `@tag Bleed`. A pressable control a fraction of a
   pixel under 24 px now reads `198x23.7 px`, not `24x24 px; a pointer needs at least 24x24`, and one within 0.01 px of
   it is not reported. See [DreamMCP endpoint](Docs/tools/dreammcp.md#the-layout-rules).
+- **`layout` and `preview` say which way each face turned in 3D looks.** A panel, card or board whose plane leans
+  from the one it sits in gets a line before the tree -- `Panel RosterLeft, on the left: turned 14 degrees: faces
+  toward the screen centre (right edge farther)`, `Widget Board, in the middle: tilted back 35 degrees: top edge farther
+  and narrower` -- a few words at the end of the summary, and an entry in `data.faces`. Which edge is farther is read
+  off the picture (the edge drawn shorter), so a model that cannot see the preview can tell a panel that faces the
+  middle from one that faces away. Facts, not warnings. See
+  [DreamMCP endpoint](Docs/tools/dreammcp.md#which-way-a-turned-face-looks).
+- **DUI8009 also reports a text laid across the edge of a shape under it.** A label drawn after the next node's badge,
+  some of its letters on the badge and the rest off it, was taken for a text on its backplate. A shape drawn before a
+  text is now its plate only when it holds the text (or the panel the text is on is drawn over it); a shape no more than 8
+  times the text's size that it straddles is reported. Backdrop shapes, glows, rings, lines and what a frame crops away
+  are not.
+- **Building blocks turned in 3D.** Two panels that face the middle of the screen, a plane laid back like a table, and
+  a row of cards that curves toward the player, with the signs that turn each the right way, checked against the
+  picture; the pitfalls page and the cheat sheet give the signs too. See
+  [Turned in 3D](Docs/language/building-blocks.md#turned-in-3d).
 - **Agent skills.** `.skill/` holds `dream-gui-create`, `dream-gui-verify` and `dream-gui-diagnose` (published into a
   project's `.claude/skills/` by `.skill/sync-skills.ps1`), self-contained reference pages for agents
   (`.skill/reference/`, built from `Docs/` by `.skill/build-reference.ps1`), and `.skill/dui.ps1`, which runs `check`,
@@ -570,20 +606,40 @@ after 3 for 2.1.0 -- so the engine never takes 1.0.0 for the older of the two.
 
 ### Fixed
 
+- **A control you resized keeps its size.** A Button, TextInput, SpinBox, Dropdown, ProgressBar, scroll bar, Toggle,
+  RadioButton or key selector dragged taller in the designer -- or given a height in a `.dui` or the details panel --
+  went back to its style's height on the next compile, preview rebuild or any edit that rebuilt it (a Tool Tip Text, say):
+  every instance pushes its style when it is built, and the push wrote the style's height over the control's own. Under a
+  canvas slot with Auto Size off nothing else decides a child's size, so the author's was lost. The style's size is now
+  the control's default: it applies while nobody has sized the control, and follows a style changed at run time, but a
+  size somebody set stays. A Throbber, a RingMenu and an ExpandableArea still size themselves, since their size is their
+  geometry.
+
+- **A widget made in a dedicated server's world is reported once, as a warning that says what to do.** A dedicated
+  server has no UI manager by design, and every widget registered there raised an ensure -- a stack walk and a pause each
+  time, and with a `Create Dream Widget` in a player controller's `BeginPlay`, one for every player who joined (the server
+  runs that `BeginPlay` too). The world now logs one warning naming the first widget: the widget is never drawn there,
+  and UI belongs behind `Is Local Controller` or in the HUD. A widget left there is not reported again as "not destroyed
+  by its owner" when the world ends: it never had a manager to leak into. A client or standalone world without its
+  manager still raises the ensure. The new [Networking and multiplayer](Docs/guides/networking.md) guide covers dedicated and listen
+  servers and the play-in-editor net modes.
+
 - Tiled images and sprites sample the complete vertical texture range for each full row. Previously full rows collapsed to the bottom texel row, leaving long tiled chains or panels with missing sections while a final partial row still appeared.
 
 - Native scroll boxes resize their content when the inner viewport changes. Cached viewport dimensions no longer leave rows at the old width or height until another interaction or style update.
-
-- Scope-free scroll-box key tests explicitly select menu input, so a host configured for gameplay outside menus no longer disables their navigation fixture.
-
-- The DreamMCP preview stage defines its constructor alongside the complete preview-scene type, fixing independent compilation of layout and preview callers that previously instantiated an incomplete-type deleter.
-
-- `SetWantsTick(false)` inside a user widget's `NativeOnDisable` now removes its manager tick registration. Cancelled interactions no longer tick while disabled or leave a stale registration after destruction.
 
 - Native scroll boxes refresh their range after content layout commits, including dynamic rows, removals and visibility changes. Switching from a long list to a short list no longer retains the old scrollable extent.
 
 - Native scroll boxes measure wrapping content against the viewport's cross-axis size, including nested Fill slots. Scrolling to the end no longer exposes a blank tail calculated from stale or authored widths; horizontal boxes follow the same rule.
 
+- Scope-free scroll-box key tests explicitly select menu input, so a host configured for gameplay outside menus no longer disables their navigation fixture.
+
+- `SetWantsTick(false)` inside a user widget's `NativeOnDisable` now removes its manager tick registration. Cancelled interactions no longer tick while disabled or leave a stale registration after destruction.
+
+- **The starter screens' turned cards face the middle, as they say.** The title menu's save card (on the right)
+  and the results screen's rank card (on the left) were turned with the wrong sign and faced away from the middle of the
+  screen; a screen copied from them turned its panels outward. They now take `RenderRotation = (0, 14, 0)` and
+  `(0, -16, 0)`.
 - **A preview right after a change draws the screen.** The source watcher rebuilds a `.dui` a moment after it changes;
   when that rebuild landed in the frames a DreamMCP `preview` (or `layout`) spent on a screen it had just compiled, it
   reinstanced the screen on the stage and the picture came out empty ("draws almost nothing"), the next one fine. The

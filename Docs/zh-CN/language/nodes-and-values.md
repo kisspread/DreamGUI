@@ -67,6 +67,7 @@ Image TrimLeft {
 - **读不通的行**——`@tag` 之后什么都没有、数字或字符串、两个名字之间没有逗号、末尾多一个逗号——是 DUI2024，报在 `@` 处。
 - **同一个名字写两次仍是一个标签**，无论在同一行还是两行。
 - **它们落在 `Tags` 里**，即每个控件都有的 `TArray<FName>`。同一节点上的 `Tags = [Trim, Glow]` 行同样有效，两者会叠加。
+- **`Bleed` 会被布局检查读取。** 标记为 `Bleed` 的节点——光晕、阴影，或旨在超出其卡片或覆盖在文本上的装饰——以及它内部的所有内容，都会被排除在 DUI8008 和 DUI8009 之外（[DreamMCP：超出框架](../tools/dreammcp.md#going-past-the-frame-on-purpose-tag-bleed)）。
 
 `@tag` 也是写出由 `Asset` 资源指定类型的节点的方式（`@Name Id { }`，见[节点类型](#node-types)），所以名为 `tag` 的资源必须加以区分。节点而不是标签行，是 `@tag` 后跟一个名字，然后是 `{`、`:` 或 `(was: …)`——`@tag Trim { }`、`@tag Trim : Style`——或者直接跟 `{` 或 `.`：`@tag { }` 和 `@tag.Something`。`@tag` 之后的其它一切内容都是标签行。
 
@@ -173,7 +174,7 @@ AnchorData.SizeDelta = (400, 240)
 渲染变换会移动节点的绘制位置，而不影响布局：
 
 - `RenderTranslation = (X, Y, Z)`，单位为像素：**X 是深度**——负值将节点拉向观察者并绘制得更大，正值将其推远——Y 向右，Z 向上。`(0, -40, 0)` 向左 40 px；`(-40, 0, 0)` 靠近 40。
-- `RenderRotation = (Pitch, Yaw, Roll)`，单位为度，围绕 `RenderTransformPivot`：Yaw 绕节点的垂直轴转动（正值使其右边缘靠近），Pitch 绕水平轴转动，Roll 在屏幕平面内转动（正值为顺时针）。
+- `RenderRotation = (Pitch, Yaw, Roll)`，单位为度，围绕`RenderTransformPivot`：Yaw 绕节点的垂直轴转动（正值使其右边缘靠近），Pitch 绕水平轴转动（正值使其上边缘靠近；负值使其向后仰），Roll 在屏幕平面内转动（正值为顺时针）。位于屏幕左侧的面板以负 Yaw 朝向中间，位于右侧的面板以正 Yaw 朝向中间。
 - `RenderScale = (X, Y, Z)` 会按绘制时的效果缩放该节点。
 
 把列表写在不是数组或 Set 的属性上、把 Map 写在不是 Map 的属性上，或者节点的 Set/Map，都是 DUI4009；读不通的列表或 Map（括号没有闭合、Map 条目缺少 `:`，但 struct 的第一个条目除外，它可以不带键）是 DUI2023。

@@ -25,6 +25,8 @@ UnrealEditor-Cmd.exe <project>.uproject -ExecCmds="Automation RunTests DreamGUI"
 
 在 `-nullrhi` 下，引擎会自行丢弃所有标记为 `NonNullRHI` 的测试（即读取像素的那些），因此这些测试需要 `-RenderOffScreen`：一个没有窗口的真实 RHI。
 
+没有活动作用域的导航测试夹具必须显式选择所需的输入模式，并在之后恢复它。宿主可以合法地设置 `InputModeWithoutScope=Game`；在该模式下，内置方向键和翻页键不会操作未限定作用域的 HUD。菜单集成测试应创建其实际作用域，而不是更改宿主回退设置。
+
 <a id="the-runner-invoke-dreamguitestsps1"></a>
 
 ## 运行器：Invoke-DreamGUITests.ps1
@@ -152,6 +154,7 @@ python Tools/Tests/static_checks.py --list-rules
 | `layering` | error | 包含了上层的下层模块没法和它拆开 |
 | `layering-stale` | error | 待拆的边的清单只减不增：已经不存在的边要从清单上拿掉 |
 | `engine-private-path` | error | 引擎的 `Private` 和 `Internal` 头文件会不打招呼地在版本之间变化；插件只通过公开头文件读引擎 |
+| `preset-names` | 错误 | 屏幕通过指定另一个预设来改变外观，因此 `DUI/Presets/` 中的每个预设都会声明 `Default.dui` 所声明的资源和样式 |
 
 一个应当保留的发现，可以就地放行（写在那一行或上一行），或者写进 `static-checks-allow.json`（路径 glob、可选的正则、理由）：
 

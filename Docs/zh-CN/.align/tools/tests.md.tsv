@@ -1,4 +1,4 @@
-#dreamdocs-align 1	source=Docs/tools/tests.md	rev=aa0301eb152c	model=deepseek-flash	page=1fbdb766627c
+#dreamdocs-align 1	source=Docs/tools/tests.md	rev=81ab704076de	model=deepseek-v4.1-flash	page=568ffd5bdc7b
 meta:title	014a094919ee	c3f7f349	m
 meta:description	ce0968782cfe	949c8039	m
 p	f13e2c8cf5fa	4d26f07a	m
@@ -7,6 +7,7 @@ p	6d3690322b2a	8e52a969	m
 p	64660a00d5a4	6e4f73d0	m
 p	5e88d38acd30	a6f9c9f6	m
 p	e218c8e65173	7bbcced8	m
+p	684fa4f0afe6	fcd800f4	m
 h2	76d3be3d0eaf	b7f52940	m
 p	f7fc1c211231	8a89ebbc	m
 p	3812ac66481d	3c15b6e2	m
@@ -72,6 +73,7 @@ row3	5b14b330c8d0	a48ee3fd	m
 row3	2c1b9bcfea56	7077f65d	m
 row3	3899fe85c061	4ab2d4d3	m
 row3	d0163c25d680	42e68ae9	m
+row3	c32c1f316eb8	752f60e8	m
 p	7f8ba7277d44	240bb45e	m
 p	069892289765	916f0cbb	m
 p	0d4cf3767080	47e559da	m

@@ -28,6 +28,7 @@
 #include "UObject/UObjectIterator.h"
 #include "HAL/IConsoleManager.h"
 #include "Internationalization/TextLocalizationManager.h"
+#include "DreamGUIEngineCompat.h"
 #if WITH_EDITOR
 #include "Editor.h"
 #include "EditorViewportClient.h"
@@ -100,10 +101,14 @@ bool UDreamUIManagerWorldSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 		return false;
 	}
 	// Asked while the world is being made, which is early enough to trust its net mode: a play-in-editor server answers
-	// the mode it was created in before it has a net driver (UWorld::InternalGetNetMode). A server process is a dedicated
-	// server whatever its world would say.
-	const UWorld* World = Cast<UWorld>(Outer);
-	const ENetMode NetMode = IsRunningDedicatedServer() ? NM_DedicatedServer : (World != nullptr ? World->GetNetMode() : NM_Standalone);
+	// the mode it was created in before it has a net driver (UWorld::InternalGetNetMode).
+	return ShouldRunForWorld(Cast<UWorld>(Outer));
+}
+
+bool UDreamUIManagerWorldSubsystem::ShouldRunForWorld(const UWorld* InWorld)
+{
+	// A server process is a dedicated server whatever its world would say.
+	const ENetMode NetMode = IsRunningDedicatedServer() ? NM_DedicatedServer : (InWorld != nullptr ? InWorld->GetNetMode() : NM_Standalone);
 	return ShouldRunForNetMode(NetMode);
 }
 
@@ -327,6 +332,14 @@ void UDreamUIManagerWorldSubsystem::HandleWorldCleanup(UWorld* InWorld, bool bIn
 {
 	// Only a cleanup that releases the world's resources: that one is followed by Deinitialize. One
 	// that keeps them leaves the world standing, and its trees with it.
+#if !DREAMGUI_ENGINE_AT_LEAST(5, 7)
+	// Before 5.7 the engine has no end-play notification for a world subsystem, and a world that played is cleaned up
+	// after its actors ended play: the closest moment to the one the newer engines report.
+	if (InWorld != nullptr && InWorld == GetWorld() && bDreamHasBegunPlay)
+	{
+		OnWorldEndPlay(*InWorld);
+	}
+#endif
 	if (InWorld != nullptr && InWorld == GetWorld() && bInCleanupResources)
 	{
 		TeardownWorld();
@@ -369,6 +382,9 @@ void UDreamUIManagerWorldSubsystem::MarkDreamUIWidgetOutlinerChanged()
 void UDreamUIManagerWorldSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
+#if !DREAMGUI_ENGINE_AT_LEAST(5, 7)
+	bDreamHasBegunPlay = true;
+#endif
 	//normally BeginPlay is already called when LoadPrefab, but if World has not BeginPlay then this will work
 	//
 	// Snapshot first, and re-check each entry, the way UDreamWidget::BeginPlay/EndPlay/OnRegister do:
@@ -399,7 +415,11 @@ void UDreamUIManagerWorldSubsystem::OnWorldEndPlay(UWorld& InWorld)
 		// still registered is what the services hold, and what nobody did.
 		TeardownWorld();
 	}
+#if DREAMGUI_ENGINE_AT_LEAST(5, 7)
 	Super::OnWorldEndPlay(InWorld);
+#else
+	bDreamHasBegunPlay = false;
+#endif
 }
 
 #if WITH_EDITOR
